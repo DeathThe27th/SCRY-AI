@@ -1,0 +1,1 @@
+export function Sparkline({values,up}:{values:number[];up:boolean}){const min=Math.min(...values),max=Math.max(...values),span=max-min||1;const pts=values.map((v,i)=>`${i/(values.length-1)*72},${22-(v-min)/span*18}`).join(" ");return <svg className={`spark ${up?"up":"down"}`} viewBox="0 0 72 26" aria-hidden="true"><polyline points={pts}/></svg>}

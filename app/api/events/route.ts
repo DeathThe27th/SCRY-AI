@@ -1,0 +1,3 @@
+import { NextRequest,NextResponse } from "next/server";import { z } from "zod";import { allowed } from "@/lib/rate-limit";
+const schema=z.object({anonymousSessionId:z.string().uuid(),eventName:z.enum(["bitget_redirect_clicked"]),ticker:z.string().max(8).optional(),metadata:z.record(z.string(),z.unknown()).optional(),timestamp:z.string().datetime()});
+export async function POST(req:NextRequest){if(!allowed("events",60))return NextResponse.json({error:"Rate limited"},{status:429});const p=schema.safeParse(await req.json().catch(()=>null));return p.success?NextResponse.json({ok:true},{status:201}):NextResponse.json({error:"Invalid event"},{status:400})}

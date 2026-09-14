@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";import { makeBrief,movers } from "@/fixtures/market";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const ticker=id.replace("snapshot-","").toUpperCase();if(!movers.some(m=>m.ticker===ticker))return NextResponse.json({error:"Brief not found"},{status:404});return NextResponse.json({data:makeBrief(ticker),mode:"snapshot"})}

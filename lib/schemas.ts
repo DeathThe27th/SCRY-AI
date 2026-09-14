@@ -1,0 +1,3 @@
+import { z } from "zod";
+export const researchRequest=z.object({ticker:z.string().trim().toUpperCase().regex(/^[A-Z.]{1,8}$/),question:z.string().trim().max(500).default("Why is this moving?"),window:z.string().max(80).default("Since prior US close")});
+export const decisionRequest=z.object({anonymousSessionId:z.string().uuid(),researchRunId:z.string().max(100).optional(),ticker:z.string().regex(/^[A-Z.]{1,8}$/),stance:z.enum(["bullish","bearish","no_trade","watch"]),reason:z.string().max(1000).optional(),horizon:z.string().max(100).optional(),entryIdea:z.number().optional(),invalidationLevel:z.number().optional(),target:z.number().optional(),priceAtDecision:z.number().optional(),createdAt:z.string().datetime()});

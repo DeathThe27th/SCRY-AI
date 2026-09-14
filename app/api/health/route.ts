@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";
+export async function GET(){return NextResponse.json({status:"ok",dataMode:"snapshot",capturedAt:"2025-08-27T20:00:00Z",providers:{ai:{configured:!!process.env.AI_API_KEY},bitget:{configured:!!process.env.BITGET_WALLET_API_KEY},marketData:{configured:!!process.env.MARKET_DATA_API_KEY},news:{configured:!!process.env.NEWS_API_KEY},supabase:{configured:!!process.env.SUPABASE_SERVICE_ROLE_KEY}}})}

@@ -1,0 +1,3 @@
+import { NextRequest,NextResponse } from "next/server";import { decisionRequest } from "@/lib/schemas";import { allowed } from "@/lib/rate-limit";
+export async function GET(){return NextResponse.json({data:[],storage:"browser"})}
+export async function POST(req:NextRequest){if(!allowed(`decision:${req.headers.get("x-forwarded-for")||"local"}`,30))return NextResponse.json({error:"Write limit reached"},{status:429});const p=decisionRequest.safeParse(await req.json().catch(()=>null));if(!p.success)return NextResponse.json({error:"Invalid decision",details:p.error.issues.map(i=>i.path.join("."))},{status:400});return NextResponse.json({data:{...p.data,id:crypto.randomUUID()},storage:"browser"},{status:201})}
