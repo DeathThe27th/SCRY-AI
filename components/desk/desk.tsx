@@ -1,25 +1,708 @@
 "use client";
-import { useEffect,useMemo,useState } from "react";import Link from "next/link";import { Activity,ArrowDownRight,ArrowUpRight,BookOpen,ChevronRight,Clock3,Newspaper,Plus,Search,ShieldCheck,Sparkles,X } from "lucide-react";import { movers,candles,tickerEvidence,makeBrief,SNAPSHOT_AT } from "@/fixtures/market";import type { Brief } from "@/lib/types";import { Sparkline } from "@/components/sparkline";import { MarketChart } from "./chart";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Activity,
+  ArrowDownRight,
+  ArrowUpRight,
+  BookOpen,
+  ChevronRight,
+  Clock3,
+  Newspaper,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
+import {
+  movers,
+  candles,
+  tickerEvidence,
+  makeBrief,
+  SNAPSHOT_AT,
+} from "@/fixtures/market";
+import type { Brief } from "@/lib/types";
+import { Sparkline } from "@/components/sparkline";
+import { MarketChart } from "./chart";
 
-const stages=["Gathering current market evidence","Reading relevant events and filings","Testing competing explanations","Checking contradictions and missing data","Preparing the decision brief"];
-const pulse=[
- {label:"AI & chips",value:"NVDA leads",change:"+1.05%",up:true},
- {label:"Crypto beta",value:"COIN fades",change:"−2.23%",up:false},
- {label:"Mega-cap",value:"AAPL steady",change:"+0.51%",up:true},
+const stages = [
+  "Gathering current market evidence",
+  "Reading relevant events and filings",
+  "Testing competing explanations",
+  "Checking contradictions and missing data",
+  "Preparing the decision brief",
 ];
-function uid(){let id=localStorage.getItem("scry-session");if(!id){id=crypto.randomUUID();localStorage.setItem("scry-session",id)}return id}
-export function Desk({initialTicker="NVDA"}:{initialTicker?:string}){
- const [ticker,setTicker]=useState(movers.some(m=>m.ticker===initialTicker)?initialTicker:"NVDA"),[query,setQuery]=useState(""),[token,setToken]=useState(true),[tab,setTab]=useState("Timeline"),[brief,setBrief]=useState<Brief|null>(null),[loading,setLoading]=useState(false),[stage,setStage]=useState(0),[decision,setDecision]=useState<string|null>(null),[reason,setReason]=useState("");
- const m=movers.find(x=>x.ticker===ticker)!;const ev=tickerEvidence(ticker);const filtered=useMemo(()=>movers.filter(x=>(x.ticker+x.company).toLowerCase().includes(query.toLowerCase())),[query]);
- useEffect(()=>{setBrief(null);setDecision(null)},[ticker]);
- async function investigate(){setLoading(true);setStage(0);for(let i=0;i<stages.length;i++){setStage(i);await new Promise(r=>setTimeout(r,260))}try{const r=await fetch("/api/research",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticker,question:"Why is this moving?",window:"Since prior US close"})});const j=await r.json();setBrief(j.data||makeBrief(ticker))}catch{setBrief(makeBrief(ticker))}setLoading(false)}
- function saveDecision(stance:string){const item={id:crypto.randomUUID(),anonymousSessionId:uid(),researchRunId:brief?.id,ticker,stance,reason,horizon:"Review at next US open",priceAtDecision:m.price,createdAt:new Date().toISOString()};const all=JSON.parse(localStorage.getItem("scry-decisions")||"[]");localStorage.setItem("scry-decisions",JSON.stringify([item,...all]));setDecision(stance)}
- async function trade(){const event={anonymousSessionId:uid(),eventName:"bitget_redirect_clicked",ticker,metadata:{tokenizedSymbol:m.tokenSymbol,sourcePage:"desk",briefId:brief?.id},timestamp:new Date().toISOString()};fetch("/api/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(event)}).catch(()=>{});window.open("https://web3.bitget.com/en/swap","_blank","noopener,noreferrer")}
- return <main><section className="market-front"><div className="market-categories"><button className="active">For you</button><button>Most active</button><button>AI & chips</button><button>Crypto-linked</button><button>Mega-cap tech</button><button>After hours</button></div><div className="front-grid"><article className="front-feature"><div className="feature-copy"><span className="live-kicker"><i/> OPENING INTELLIGENCE · SNAPSHOT</span><h1>What moved<br/><em>after the bell?</em></h1><p>NVIDIA&apos;s earnings landed inside the investigation window. The tokenized observation is trading above its reference close—but the peer confirmation is incomplete.</p><div className="feature-actions"><button onClick={()=>{setTicker("NVDA");document.querySelector(".workspace")?.scrollIntoView({behavior:"smooth"})}}>Investigate NVDA <ArrowUpRight size={16}/></button><a href="#latest-news">Read the evidence</a></div></div><div className="feature-market"><span className="feature-symbol">NVDA <small>NVDAX</small></span><div className="feature-price"><strong>$181.60</strong><span className="positive">▲ 1.05%</span></div><Sparkline values={movers[0].spark} up/><div className="probability-bar"><i/><span>Above reference close</span><b>+$1.90</b></div><small>Captured Aug 27, 2025 · 20:00 UTC</small></div></article><aside className="front-side"><div className="side-title"><span><Activity size={14}/> MARKET PULSE</span><small>FROM PRIOR CLOSE</small></div>{pulse.map(item=><button key={item.label} onClick={()=>setTicker(item.value.split(" ")[0])}><span><small>{item.label}</small><b>{item.value}</b></span><span className={item.up?"positive":"negative"}>{item.up?<ArrowUpRight size={15}/>:<ArrowDownRight size={15}/>} {item.change}</span></button>)}<div className="snapshot-note"><Clock3 size={14}/><span><b>Historical snapshot</b><small>Deterministic demo—not live quotes</small></span></div></aside></div><div className="front-section-head"><div><span className="eyebrow">MARKET BOARD</span><h2>Tokenized stocks in focus</h2></div><span>4 instruments · 24/7 observations</span></div><div className="mover-strip market-cards">{movers.map((x,i)=><button key={x.ticker} className={ticker===x.ticker?"selected":""} onClick={()=>setTicker(x.ticker)}><span className="card-rank">0{i+1}</span><span className="card-name"><b>{x.company}</b><small>{x.ticker} · {x.tokenSymbol}</small></span><Sparkline values={x.spark} up={x.changePct>=0}/><span className="card-quote"><b>${x.price.toFixed(2)}</b><small className={x.changePct>=0?"positive":"negative"}>{x.changePct>=0?"▲":"▼"} {Math.abs(x.changePct).toFixed(2)}%</small></span></button>)}</div><div className="news-grid" id="latest-news"><div className="front-section-head"><div><span className="eyebrow"><Newspaper size={12}/> LATEST SIGNALS</span><h2>News moving the board</h2></div><span>Primary sources prioritized</span></div>{tickerEvidence(ticker).slice(0,3).map((item,i)=><article className={i===0?"lead-news":""} key={item.id}><div><span>{item.category}</span><small>{item.id}</small></div><h3>{item.title}</h3><p>{item.statement}</p><footer><span>{item.source}</span>{item.url&&<a href={item.url} target="_blank" rel="noreferrer">Source <ArrowUpRight size={13}/></a>}</footer></article>)}<article className="scry-take"><Sparkles size={18}/><span className="eyebrow">SCRY TAKE</span><h3>{m.ticker} needs confirmation, not conviction.</h3><p>The move is visible. The broader evidence set is still thin. Investigate before forming a view.</p><button onClick={investigate}>Build bull & bear cases <ChevronRight size={14}/></button></article></div></section>
- <div className="desk-grid"><aside className="discover"><div className="rail-title"><span>DISCOVER</span><button aria-label="Add ticker"><Plus size={15}/></button></div><label className="rail-search"><Search size={14}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ticker or company"/></label><div className="section-label">TOKENIZED MOVERS <span>{filtered.length}</span></div>{filtered.map(x=><button key={x.ticker} className={`stock-row ${ticker===x.ticker?"active":""}`} onClick={()=>setTicker(x.ticker)}><span className="tickerbox">{x.ticker.slice(0,2)}</span><span className="stock-name"><b>{x.ticker}</b><small>{x.company}</small></span><span className="stock-price"><b>${x.price.toFixed(2)}</b><small className={x.changePct>=0?"positive":"negative"}>{x.changePct>=0?"▲":"▼"} {Math.abs(x.changePct).toFixed(2)}%</small></span></button>)}{!filtered.length&&<div className="empty">No snapshot ticker matches “{query}”.</div>}<div className="section-label spaced">YOUR WATCHLIST <span>2</span></div><div className="watch"><span>NVDA</span><span>COIN</span></div><div className="data-card"><i/><div><b>Snapshot demo data</b><small>Captured {new Date(SNAPSHOT_AT).toLocaleDateString()}</small></div></div></aside>
- <section className="workspace"><div className="stock-head"><div><span className="eyebrow">{m.sector} · {m.tokenSymbol}</span><h2>{m.company} <em>{m.ticker}</em></h2></div><div className="quote"><strong>${m.price.toFixed(2)}</strong><span className={m.changePct>=0?"positive":"negative"}>{m.changePct>=0?"+":""}{m.changePct.toFixed(2)}%</span><small>REF CLOSE ${m.referenceClose.toFixed(2)}</small></div></div><div className="statusline"><span><i className="amber"/> SNAPSHOT DATA</span><span><Clock3 size={13}/> Captured Aug 27, 20:00 UTC</span><span>Volume {m.volume}</span></div><div className="chartbar"><div>{["1H","1D","1W","1M","3M","1Y"].map((x,i)=><button className={i===1?"active":""} key={x}>{x}</button>)}</div><div className="toggle"><button className={!token?"active":""} onClick={()=>setToken(false)}>Underlying</button><button className={token?"active":""} onClick={()=>setToken(true)}>Tokenized</button></div></div><MarketChart data={candles[ticker]} token={token}/><div className="tabs">{["Timeline","Fundamentals","Related assets","Token details"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</div><div className="tabbody">{tab==="Timeline"&&ev.map(e=><article className="evidence" id={e.id} key={e.id}><div><span className="evidence-id">{e.id}</span><span className="kind">{e.category}</span></div><div><h3>{e.title}</h3><p>{e.statement}</p><small>{e.source} · {new Date(e.publishedAt).toLocaleString()}</small></div>{e.url?<a href={e.url} target="_blank" rel="noreferrer" aria-label={`Open ${e.title}`}><ArrowUpRight size={16}/></a>:<span/>}</article>)}{tab==="Fundamentals"&&<div className="metrics"><div><small>REFERENCE CLOSE</small><b>${m.referenceClose}</b></div><div><small>SNAPSHOT VOLUME</small><b>{m.volume}</b></div><div><small>SECTOR</small><b>{m.sector}</b></div></div>}{tab==="Related assets"&&<div className="empty large">Related-market observations are unavailable in this committed snapshot. Scry lowers confidence when context is missing.</div>}{tab==="Token details"&&<div className="token-details"><div><small>SYMBOL</small><b>{m.tokenSymbol}</b></div><div><small>HANDOFF</small><b>Bitget marketplace</b></div><div><small>CHAIN / CONTRACT</small><b>Unavailable in snapshot</b></div></div>}</div></section>
- <aside className="research"><div className="research-head"><div><span className="orb"/><div><b>SCRY RESEARCH</b><small>Evidence-bound synthesis</small></div></div><button aria-label="Close research"><X size={16}/></button></div>{!brief&&!loading&&<><div className="research-intro"><span className="eyebrow">MOVEMENT INVESTIGATION</span><h2>Interrogate the move.</h2><p>Scry checks current evidence, builds competing explanations, and exposes what would invalidate them.</p></div><button className="investigate" onClick={investigate}>Investigate move <ChevronRight size={17}/></button><div className="prompts">{["What changed since the US close?","Build the bull and bear cases.","Which evidence contradicts the move?","Compare with its closest peers."].map(x=><button key={x} onClick={investigate}>{x}<ChevronRight size={14}/></button>)}</div><div className="boundary"><ShieldCheck size={17}/><p><b>You make the decision.</b><br/>Scry assembles evidence and uncertainty. It never places an order.</p></div></>}{loading&&<div className="progress"><span className="eyebrow">RESEARCH IN PROGRESS</span><h2>Investigating {ticker}</h2>{stages.map((x,i)=><div className={i<stage?"done":i===stage?"current":""} key={x}><i>{i<stage?"✓":i+1}</i><span>{x}</span></div>)}</div>}{brief&&<BriefView brief={brief} reason={reason} setReason={setReason} save={saveDecision} decision={decision} trade={trade}/>}</aside></div></main>
+const pulse = [
+  { label: "AI & chips", value: "NVDA leads", change: "+1.05%", up: true },
+  { label: "Crypto beta", value: "COIN fades", change: "−2.23%", up: false },
+  { label: "Mega-cap", value: "AAPL steady", change: "+0.51%", up: true },
+];
+function uid() {
+  let id = localStorage.getItem("scry-session");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("scry-session", id);
+  }
+  return id;
+}
+export function Desk({ initialTicker = "NVDA" }: { initialTicker?: string }) {
+  const [ticker, setTicker] = useState(
+      movers.some((m) => m.ticker === initialTicker) ? initialTicker : "NVDA",
+    ),
+    [query, setQuery] = useState(""),
+    [token, setToken] = useState(true),
+    [tab, setTab] = useState("Timeline"),
+    [brief, setBrief] = useState<Brief | null>(null),
+    [loading, setLoading] = useState(false),
+    [stage, setStage] = useState(0),
+    [decision, setDecision] = useState<string | null>(null),
+    [reason, setReason] = useState("");
+  const m = movers.find((x) => x.ticker === ticker)!;
+  const ev = tickerEvidence(ticker);
+  const filtered = useMemo(
+    () =>
+      movers.filter((x) =>
+        (x.ticker + x.company).toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query],
+  );
+  useEffect(() => {
+    setBrief(null);
+    setDecision(null);
+  }, [ticker]);
+  async function investigate() {
+    setLoading(true);
+    setStage(0);
+    for (let i = 0; i < stages.length; i++) {
+      setStage(i);
+      await new Promise((r) => setTimeout(r, 260));
+    }
+    try {
+      const r = await fetch("/api/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker,
+          question: "Why is this moving?",
+          window: "Since prior US close",
+        }),
+      });
+      const j = await r.json();
+      setBrief(j.data || makeBrief(ticker));
+    } catch {
+      setBrief(makeBrief(ticker));
+    }
+    setLoading(false);
+  }
+  function saveDecision(stance: string) {
+    const item = {
+      id: crypto.randomUUID(),
+      anonymousSessionId: uid(),
+      researchRunId: brief?.id,
+      ticker,
+      stance,
+      reason,
+      horizon: "Review at next US open",
+      priceAtDecision: m.price,
+      createdAt: new Date().toISOString(),
+    };
+    const all = JSON.parse(localStorage.getItem("scry-decisions") || "[]");
+    localStorage.setItem("scry-decisions", JSON.stringify([item, ...all]));
+    setDecision(stance);
+  }
+  async function trade() {
+    const event = {
+      anonymousSessionId: uid(),
+      eventName: "bitget_redirect_clicked",
+      ticker,
+      metadata: {
+        tokenizedSymbol: m.tokenSymbol,
+        sourcePage: "desk",
+        briefId: brief?.id,
+      },
+      timestamp: new Date().toISOString(),
+    };
+    fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    }).catch(() => {});
+    window.open(
+      "https://web3.bitget.com/en/swap",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+  return (
+    <main>
+      <section className="market-front">
+        <div className="market-categories" aria-label="Market categories">
+          <span className="active">For you</span>
+          <span>Most active</span>
+          <span>AI &amp; chips</span>
+          <span>Crypto-linked</span>
+          <span>Mega-cap tech</span>
+          <span>After hours</span>
+        </div>
+        <div className="front-grid">
+          <article className="front-feature">
+            <div className="feature-copy">
+              <span className="live-kicker">
+                <i /> OPENING INTELLIGENCE · SNAPSHOT
+              </span>
+              <h1>
+                What moved
+                <br />
+                <em>after the bell?</em>
+              </h1>
+              <p>
+                NVIDIA&apos;s earnings landed inside the investigation window.
+                The tokenized observation is trading above its reference
+                close—but the peer confirmation is incomplete.
+              </p>
+              <div className="feature-actions">
+                <button
+                  onClick={() => {
+                    setTicker("NVDA");
+                    document
+                      .querySelector(".workspace")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  Investigate NVDA <ArrowUpRight size={16} />
+                </button>
+                <a href="#latest-news">Read the evidence</a>
+              </div>
+            </div>
+            <div className="feature-market">
+              <span className="feature-symbol">
+                NVDA <small>NVDAX</small>
+              </span>
+              <div className="feature-price">
+                <strong>$181.60</strong>
+                <span className="positive">▲ 1.05%</span>
+              </div>
+              <Sparkline values={movers[0].spark} up />
+              <div className="probability-bar">
+                <i />
+                <span>Above reference close</span>
+                <b>+$1.90</b>
+              </div>
+              <small>Captured Aug 27, 2025 · 20:00 UTC</small>
+            </div>
+          </article>
+          <aside className="front-side">
+            <div className="side-title">
+              <span>
+                <Activity size={14} /> MARKET PULSE
+              </span>
+              <small>FROM PRIOR CLOSE</small>
+            </div>
+            {pulse.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => setTicker(item.value.split(" ")[0])}
+              >
+                <span>
+                  <small>{item.label}</small>
+                  <b>{item.value}</b>
+                </span>
+                <span className={item.up ? "positive" : "negative"}>
+                  {item.up ? (
+                    <ArrowUpRight size={15} />
+                  ) : (
+                    <ArrowDownRight size={15} />
+                  )}{" "}
+                  {item.change}
+                </span>
+              </button>
+            ))}
+            <div className="snapshot-note">
+              <Clock3 size={14} />
+              <span>
+                <b>Historical snapshot</b>
+                <small>Deterministic demo—not live quotes</small>
+              </span>
+            </div>
+          </aside>
+        </div>
+        <div className="front-section-head">
+          <h2>
+            Market board <span>Tokenized stocks in focus</span>
+          </h2>
+          <span>4 instruments · 24/7 observations</span>
+        </div>
+        <div className="mover-strip market-cards">
+          {movers.map((x) => (
+            <button
+              key={x.ticker}
+              className={ticker === x.ticker ? "selected" : ""}
+              onClick={() => setTicker(x.ticker)}
+            >
+              <span className="card-name">
+                <b>{x.company}</b>
+                <small>
+                  {x.ticker} · {x.tokenSymbol}
+                </small>
+              </span>
+              <Sparkline values={x.spark} up={x.changePct >= 0} />
+              <span className="card-quote">
+                <b>${x.price.toFixed(2)}</b>
+                <small className={x.changePct >= 0 ? "positive" : "negative"}>
+                  {x.changePct >= 0 ? "▲" : "▼"}{" "}
+                  {Math.abs(x.changePct).toFixed(2)}%
+                </small>
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="news-grid" id="latest-news">
+          <div className="front-section-head">
+            <h2>
+              <Newspaper size={17} /> Latest signals
+              <span>News moving the board</span>
+            </h2>
+            <span>Primary sources prioritized</span>
+          </div>
+          {tickerEvidence(ticker)
+            .slice(0, 3)
+            .map((item, i) => (
+              <article className={i === 0 ? "lead-news" : ""} key={item.id}>
+                <div>
+                  <span>{item.category}</span>
+                  <small>{item.id}</small>
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.statement}</p>
+                <footer>
+                  <span>{item.source}</span>
+                  {item.url && (
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      Source <ArrowUpRight size={13} />
+                    </a>
+                  )}
+                </footer>
+              </article>
+            ))}
+          <article className="scry-take">
+            <Sparkles size={18} />
+            <h3>Scry take: {m.ticker} needs confirmation, not conviction.</h3>
+            <p>
+              The move is visible. The broader evidence set is still thin.
+              Investigate before forming a view.
+            </p>
+            <button onClick={investigate}>
+              Build bull & bear cases <ChevronRight size={14} />
+            </button>
+          </article>
+        </div>
+      </section>
+      <div className="desk-grid">
+        <aside className="discover">
+          <div className="rail-title">
+            <span>DISCOVER</span>
+            <button aria-label="Add ticker">
+              <Plus size={15} />
+            </button>
+          </div>
+          <label className="rail-search">
+            <Search size={14} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Ticker or company"
+            />
+          </label>
+          <div className="section-label">
+            TOKENIZED MOVERS <span>{filtered.length}</span>
+          </div>
+          {filtered.map((x) => (
+            <button
+              key={x.ticker}
+              className={`stock-row ${ticker === x.ticker ? "active" : ""}`}
+              onClick={() => setTicker(x.ticker)}
+            >
+              <span className="tickerbox">{x.ticker.slice(0, 2)}</span>
+              <span className="stock-name">
+                <b>{x.ticker}</b>
+                <small>{x.company}</small>
+              </span>
+              <span className="stock-price">
+                <b>${x.price.toFixed(2)}</b>
+                <small className={x.changePct >= 0 ? "positive" : "negative"}>
+                  {x.changePct >= 0 ? "▲" : "▼"}{" "}
+                  {Math.abs(x.changePct).toFixed(2)}%
+                </small>
+              </span>
+            </button>
+          ))}
+          {!filtered.length && (
+            <div className="empty">No snapshot ticker matches “{query}”.</div>
+          )}
+          <div className="section-label spaced">
+            YOUR WATCHLIST <span>2</span>
+          </div>
+          <div className="watch">
+            <span>NVDA</span>
+            <span>COIN</span>
+          </div>
+          <div className="data-card">
+            <i />
+            <div>
+              <b>Snapshot demo data</b>
+              <small>
+                Captured {new Date(SNAPSHOT_AT).toLocaleDateString()}
+              </small>
+            </div>
+          </div>
+        </aside>
+        <section className="workspace">
+          <div className="stock-head">
+            <div>
+              <span className="eyebrow">
+                {m.sector} · {m.tokenSymbol}
+              </span>
+              <h2>
+                {m.company} <em>{m.ticker}</em>
+              </h2>
+            </div>
+            <div className="quote">
+              <strong>${m.price.toFixed(2)}</strong>
+              <span className={m.changePct >= 0 ? "positive" : "negative"}>
+                {m.changePct >= 0 ? "+" : ""}
+                {m.changePct.toFixed(2)}%
+              </span>
+              <small>REF CLOSE ${m.referenceClose.toFixed(2)}</small>
+            </div>
+          </div>
+          <div className="statusline">
+            <span>
+              <i className="amber" /> SNAPSHOT DATA
+            </span>
+            <span>
+              <Clock3 size={13} /> Captured Aug 27, 20:00 UTC
+            </span>
+            <span>Volume {m.volume}</span>
+          </div>
+          <div className="chartbar">
+            <div>
+              {["1H", "1D", "1W", "1M", "3M", "1Y"].map((x, i) => (
+                <button className={i === 1 ? "active" : ""} key={x}>
+                  {x}
+                </button>
+              ))}
+            </div>
+            <div className="toggle">
+              <button
+                className={!token ? "active" : ""}
+                onClick={() => setToken(false)}
+              >
+                Underlying
+              </button>
+              <button
+                className={token ? "active" : ""}
+                onClick={() => setToken(true)}
+              >
+                Tokenized
+              </button>
+            </div>
+          </div>
+          <MarketChart data={candles[ticker]} token={token} />
+          <div className="tabs">
+            {[
+              "Timeline",
+              "Fundamentals",
+              "Related assets",
+              "Token details",
+            ].map((x) => (
+              <button
+                className={tab === x ? "active" : ""}
+                onClick={() => setTab(x)}
+                key={x}
+              >
+                {x}
+              </button>
+            ))}
+          </div>
+          <div className="tabbody">
+            {tab === "Timeline" &&
+              ev.map((e) => (
+                <article className="evidence" id={e.id} key={e.id}>
+                  <div>
+                    <span className="evidence-id">{e.id}</span>
+                    <span className="kind">{e.category}</span>
+                  </div>
+                  <div>
+                    <h3>{e.title}</h3>
+                    <p>{e.statement}</p>
+                    <small>
+                      {e.source} · {new Date(e.publishedAt).toLocaleString()}
+                    </small>
+                  </div>
+                  {e.url ? (
+                    <a
+                      href={e.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${e.title}`}
+                    >
+                      <ArrowUpRight size={16} />
+                    </a>
+                  ) : (
+                    <span />
+                  )}
+                </article>
+              ))}
+            {tab === "Fundamentals" && (
+              <div className="metrics">
+                <div>
+                  <small>REFERENCE CLOSE</small>
+                  <b>${m.referenceClose}</b>
+                </div>
+                <div>
+                  <small>SNAPSHOT VOLUME</small>
+                  <b>{m.volume}</b>
+                </div>
+                <div>
+                  <small>SECTOR</small>
+                  <b>{m.sector}</b>
+                </div>
+              </div>
+            )}
+            {tab === "Related assets" && (
+              <div className="empty large">
+                Related-market observations are unavailable in this committed
+                snapshot. Scry lowers confidence when context is missing.
+              </div>
+            )}
+            {tab === "Token details" && (
+              <div className="token-details">
+                <div>
+                  <small>SYMBOL</small>
+                  <b>{m.tokenSymbol}</b>
+                </div>
+                <div>
+                  <small>HANDOFF</small>
+                  <b>Bitget marketplace</b>
+                </div>
+                <div>
+                  <small>CHAIN / CONTRACT</small>
+                  <b>Unavailable in snapshot</b>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+        <aside className="research">
+          <div className="research-head">
+            <div>
+              <span className="orb" />
+              <div>
+                <b>SCRY RESEARCH</b>
+                <small>Evidence-bound synthesis</small>
+              </div>
+            </div>
+            <button aria-label="Close research">
+              <X size={16} />
+            </button>
+          </div>
+          {!brief && !loading && (
+            <>
+              <div className="research-intro">
+                <span className="eyebrow">MOVEMENT INVESTIGATION</span>
+                <h2>Interrogate the move.</h2>
+                <p>
+                  Scry checks current evidence, builds competing explanations,
+                  and exposes what would invalidate them.
+                </p>
+              </div>
+              <button className="investigate" onClick={investigate}>
+                Investigate move <ChevronRight size={17} />
+              </button>
+              <div className="prompts">
+                {[
+                  "What changed since the US close?",
+                  "Build the bull and bear cases.",
+                  "Which evidence contradicts the move?",
+                  "Compare with its closest peers.",
+                ].map((x) => (
+                  <button key={x} onClick={investigate}>
+                    {x}
+                    <ChevronRight size={14} />
+                  </button>
+                ))}
+              </div>
+              <div className="boundary">
+                <ShieldCheck size={17} />
+                <p>
+                  <b>You make the decision.</b>
+                  <br />
+                  Scry assembles evidence and uncertainty. It never places an
+                  order.
+                </p>
+              </div>
+            </>
+          )}
+          {loading && (
+            <div className="progress">
+              <span className="eyebrow">RESEARCH IN PROGRESS</span>
+              <h2>Investigating {ticker}</h2>
+              {stages.map((x, i) => (
+                <div
+                  className={i < stage ? "done" : i === stage ? "current" : ""}
+                  key={x}
+                >
+                  <i>{i < stage ? "✓" : i + 1}</i>
+                  <span>{x}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {brief && (
+            <BriefView
+              brief={brief}
+              reason={reason}
+              setReason={setReason}
+              save={saveDecision}
+              decision={decision}
+              trade={trade}
+            />
+          )}
+        </aside>
+      </div>
+    </main>
+  );
 }
 
-function Cite({ids}:{ids:string[]}){return <span className="cites">{ids.map(id=><a href={`#${id}`} key={id}>{id}</a>)}</span>}
-function BriefView({brief,reason,setReason,save,decision,trade}:{brief:Brief;reason:string;setReason:(s:string)=>void;save:(s:string)=>void;decision:string|null;trade:()=>void}){return <div className="brief"><div className="brief-top"><span className="eyebrow">DECISION BRIEF · {brief.evidenceQuality.score}/100</span><h2>What happened</h2><p>{brief.move.summary}</p></div><section><h3>Most likely driver</h3>{brief.drivers.map((d,i)=><div className="driver" key={i}><span className={`confidence ${d.confidence}`}>{d.confidence}</span><p>{d.claim} <Cite ids={d.support}/></p><small>{d.statementType.toUpperCase()}</small></div>)}</section><div className="cases"><section><h3><span className="positive">▲</span> Bull case</h3><p>{brief.bullCase.summary} <Cite ids={brief.bullCase.evidenceIds}/></p></section><section><h3><span className="negative">▼</span> Bear case</h3><p>{brief.bearCase.summary} <Cite ids={brief.bearCase.evidenceIds}/></p></section></div><section><h3>What the market may be missing</h3><p>{brief.marketMayBeMissing[0]?.summary} <Cite ids={brief.marketMayBeMissing[0]?.evidenceIds||[]}/></p></section><section><h3>Invalidation map</h3>{brief.invalidations.map((x,i)=><p className="invalidation" key={i}><b>{x.affects.toUpperCase()}</b>{x.condition} <Cite ids={x.evidenceIds}/></p>)}</section><section className="quality"><h3>Evidence quality · {brief.evidenceQuality.label}</h3><p>{brief.evidenceQuality.explanation}</p><small>Missing: {brief.evidenceQuality.missing.join(" · ")}</small></section><section className="decision"><h3>Your decision</h3><p>Research is complete. Record your own view.</p><div>{[["Bullish","bullish"],["Bearish","bearish"],["No Trade","no_trade"],["Watch","watch"]].map(([label,value])=><button className={decision===value?"active":""} onClick={()=>save(value)} key={value}>{label}</button>)}</div><textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason or invalidation condition (optional)" maxLength={1000}/>{decision&&<p className="saved">✓ Decision saved to this browser. <Link href="/decisions">View journal</Link></p>}</section><button className="trade" onClick={trade}>Trade on Bitget <ArrowUpRight size={16}/></button><p className="handoff">Scry AI prepares the research. You review and execute on Bitget. Search for {brief.ticker}X if no exact market opens.</p><footer><BookOpen size={13}/> {brief.model} · {brief.promptVersion}</footer></div>}
+function Cite({ ids }: { ids: string[] }) {
+  return (
+    <span className="cites">
+      {ids.map((id) => (
+        <a href={`#${id}`} key={id}>
+          {id}
+        </a>
+      ))}
+    </span>
+  );
+}
+function BriefView({
+  brief,
+  reason,
+  setReason,
+  save,
+  decision,
+  trade,
+}: {
+  brief: Brief;
+  reason: string;
+  setReason: (s: string) => void;
+  save: (s: string) => void;
+  decision: string | null;
+  trade: () => void;
+}) {
+  return (
+    <div className="brief">
+      <div className="brief-top">
+        <span className="eyebrow">
+          DECISION BRIEF · {brief.evidenceQuality.score}/100
+        </span>
+        <h2>What happened</h2>
+        <p>{brief.move.summary}</p>
+      </div>
+      <section>
+        <h3>Most likely driver</h3>
+        {brief.drivers.map((d, i) => (
+          <div className="driver" key={i}>
+            <span className={`confidence ${d.confidence}`}>{d.confidence}</span>
+            <p>
+              {d.claim} <Cite ids={d.support} />
+            </p>
+            <small>{d.statementType.toUpperCase()}</small>
+          </div>
+        ))}
+      </section>
+      <div className="cases">
+        <section>
+          <h3>
+            <span className="positive">▲</span> Bull case
+          </h3>
+          <p>
+            {brief.bullCase.summary} <Cite ids={brief.bullCase.evidenceIds} />
+          </p>
+        </section>
+        <section>
+          <h3>
+            <span className="negative">▼</span> Bear case
+          </h3>
+          <p>
+            {brief.bearCase.summary} <Cite ids={brief.bearCase.evidenceIds} />
+          </p>
+        </section>
+      </div>
+      <section>
+        <h3>What the market may be missing</h3>
+        <p>
+          {brief.marketMayBeMissing[0]?.summary}{" "}
+          <Cite ids={brief.marketMayBeMissing[0]?.evidenceIds || []} />
+        </p>
+      </section>
+      <section>
+        <h3>Invalidation map</h3>
+        {brief.invalidations.map((x, i) => (
+          <p className="invalidation" key={i}>
+            <b>{x.affects.toUpperCase()}</b>
+            {x.condition} <Cite ids={x.evidenceIds} />
+          </p>
+        ))}
+      </section>
+      <section className="quality">
+        <h3>Evidence quality · {brief.evidenceQuality.label}</h3>
+        <p>{brief.evidenceQuality.explanation}</p>
+        <small>Missing: {brief.evidenceQuality.missing.join(" · ")}</small>
+      </section>
+      <section className="decision">
+        <h3>Your decision</h3>
+        <p>Research is complete. Record your own view.</p>
+        <div>
+          {[
+            ["Bullish", "bullish"],
+            ["Bearish", "bearish"],
+            ["No Trade", "no_trade"],
+            ["Watch", "watch"],
+          ].map(([label, value]) => (
+            <button
+              className={decision === value ? "active" : ""}
+              onClick={() => save(value)}
+              key={value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason or invalidation condition (optional)"
+          maxLength={1000}
+        />
+        {decision && (
+          <p className="saved">
+            ✓ Decision saved to this browser.{" "}
+            <Link href="/decisions">View journal</Link>
+          </p>
+        )}
+      </section>
+      <button className="trade" onClick={trade}>
+        Trade on Bitget <ArrowUpRight size={16} />
+      </button>
+      <p className="handoff">
+        Scry AI prepares the research. You review and execute on Bitget. Search
+        for {brief.ticker}X if no exact market opens.
+      </p>
+      <footer>
+        <BookOpen size={13} /> {brief.model} · {brief.promptVersion}
+      </footer>
+    </div>
+  );
+}
