@@ -1,2 +1,2 @@
-import { Shell } from "@/components/shell";import { Desk } from "@/components/desk/desk";
-export default function Home(){return <Shell><Desk/></Shell>}
+import { MarketHome } from '@/components/market-home';
+export default function Home(){return <MarketHome/>}
